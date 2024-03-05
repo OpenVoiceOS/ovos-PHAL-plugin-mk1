@@ -83,6 +83,7 @@ class MycroftMark1(PHALPlugin):
         self.bus.on("ovos.common_play.stop", self.on_display_reset)
         self.bus.on("mycroft.audio.service.play", self.on_music)
         self.bus.on("mycroft.audio.service.stop", self.on_display_reset)
+        self.bus.on("oauth.url", self.handle_oauth_url)
 
         self.bus.emit(Message("system.factory.reset.register",
                               {"skill_id": "ovos-phal-plugin-mk1"}))
@@ -173,6 +174,10 @@ class MycroftMark1(PHALPlugin):
         self.bus.emit(message.reply("system.factory.reset.register",
                                     {"skill_id": "ovos-phal-plugin-mk1"}))
 
+    def handle_oauth_url(self, message):
+        message.data["text"] = message.data["url"]
+        self.on_mouth_text(message)
+        
     # Audio Events
     def on_record_begin(self, message=None):
         # NOTE: ignore self._mouth_events, listening should ALWAYS be obvious
