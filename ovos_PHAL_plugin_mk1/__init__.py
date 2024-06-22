@@ -87,6 +87,10 @@ class MycroftMark1(PHALPlugin):
         self.bus.emit(Message("system.factory.reset.register",
                               {"skill_id": "ovos-phal-plugin-mk1"}))
 
+        # apis exposed for skills
+        self.bus.on("ovos.mk1.display_time", self.handle_show_time)
+        self.bus.on("ovos.mk1.display_date", self.handle_show_date)
+
     def _init_animation(self):
         # change eye color
         r = 0
@@ -107,6 +111,68 @@ class MycroftMark1(PHALPlugin):
         self.bus.once("mycroft.ready", self.on_eyes_reset)
         if self._check_services_ready():
             self.on_eyes_reset()
+
+    def handle_show_date(self, message: Message):
+        self._deactivate_mouth_events(message)
+        self.on_text(message)
+        time.sleep(10)
+        self.on_display_reset(message)
+        self._activate_mouth_events(message)
+
+    def handle_show_time(self, message: Message):
+        display_time = message.data["text"]
+        # TODO - derive display_str if not in message
+
+        self._deactivate_mouth_events(message)
+        # Map characters to the display encoding for a Mark 1
+        # (4x8 except colon, which is 2x8)
+        code_dict = {
+            ':': 'CIICAA',
+            '0': 'EIMHEEMHAA',
+            '1': 'EIIEMHAEAA',
+            '2': 'EIEHEFMFAA',
+            '3': 'EIEFEFMHAA',
+            '4': 'EIMBABMHAA',
+            '5': 'EIMFEFEHAA',
+            '6': 'EIMHEFEHAA',
+            '7': 'EIEAEAMHAA',
+            '8': 'EIMHEFMHAA',
+            '9': 'EIMBEBMHAA',
+        }
+
+        # clear screen (draw two blank sections, numbers cover rest)
+        message.data["clearPrev"] = False
+        if len(display_time) == 4:
+            message.data["img_code"] = "JIAAAAAAAAAAAAAAAAAA"
+            # for 4-character times, 9x8 blank
+            self.on_display(message)
+            message.data["xOffset"] = 22
+            self.on_display(message)
+        else:
+            # for 5-character times, 7x8 blank
+            message.data["img_code"] = "HIAAAAAAAAAAAAAA"
+            self.on_display(message)
+            message.data["xOffset"] = 24
+            self.on_display(message)
+
+        # draw the time, centered on display
+        xoffset = (32 - (4 * (len(display_time)) - 2)) / 2
+        for c in display_time:
+            if c in code_dict:
+                message.data["img_code"] = code_dict[c]
+                message.data["x"] = xoffset
+                self.on_display(message)
+                if c == ":":
+                    xoffset += 2  # colon is 1 pixels + a space
+                else:
+                    xoffset += 4  # digits are 3 pixels + a space
+
+        message.data["img_code"] = "CIAAAA"
+        message.data["x"] = 29
+        self.on_display(message)
+        time.sleep(5)
+        self.on_display_reset(message)
+        self._activate_mouth_events(message)
 
     def _check_services_ready(self):
         """Report if all specified services are ready.
