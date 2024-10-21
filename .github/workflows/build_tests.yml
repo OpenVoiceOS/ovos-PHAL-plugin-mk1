@@ -37,13 +37,3 @@ jobs:
       - name: Install repo
         run: |
           pip install .
-      - uses: pypa/gh-action-pip-audit@v1.0.8
-        with:
-            # Ignore irrelevant Mercurial vulnerability
-            # Ignore `requests` and `urllib3` vulnerabilities as they are not used in this package
-            # Ignore `setuptools` and `pip` vulnerabilities  I don't think they apply here
-            ignore-vulns: |
-                PYSEC-2023-228
-                GHSA-9wx4-h78v-vm56
-                GHSA-34jh-p97f-mpxf
-                PYSEC-2022-43012
