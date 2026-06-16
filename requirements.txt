@@ -1,5 +1,0 @@
-ovos-plugin-manager>=0.0.24
-ovos-mark1-utils>=0.0.1
-ovos-utils>=0.0.38
-ovos-i2c-detection>=0.0.5
-pyserial~=3.0
