@@ -20,9 +20,9 @@ classifiers = [
     "Programming Language :: Python :: 3"
 ]
 dependencies = [
-    "ovos-plugin-manager>=0.0.24",
+    "ovos-plugin-manager>=2.1.0,<3.0.0",
     "ovos-mark1-utils>=0.0.1",
-    "ovos-utils>=0.0.38",
+    "ovos-utils>=0.0.38,<1.0.0",
     "ovos-i2c-detection>=0.0.5",
     "pyserial~=3.0"
 ]
