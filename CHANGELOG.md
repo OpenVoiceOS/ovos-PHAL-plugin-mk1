@@ -1,20 +1,28 @@
 # Changelog
 
+## [0.1.5a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.5a1) (2026-06-16)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a5...0.1.5a1)
+
+**Merged pull requests:**
+
+- fix: require ovos-plugin-manager\>=2.1.0 for opm.\* entry points and cap ovos-\* deps at next major [\#37](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/37) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.1.4a5](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.4a5) (2026-06-16)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a4...0.1.4a5)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/V...0.1.4a5)
 
 **Merged pull requests:**
 
 - chore: add missing shared CI workflows [\#35](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/35) ([JarbasAl](https://github.com/JarbasAl))
 
-## [0.1.4a4](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.4a4) (2025-12-19)
-
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/V...0.1.4a4)
-
 ## [V](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/V) (2025-12-19)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a3...V)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a4...V)
+
+## [0.1.4a4](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.4a4) (2025-12-19)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a3...0.1.4a4)
 
 **Merged pull requests:**
 
