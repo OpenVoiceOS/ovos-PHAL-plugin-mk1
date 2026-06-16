@@ -1,8 +1,20 @@
 # Changelog
 
+## [0.1.4a5](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.4a5) (2026-06-16)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a4...0.1.4a5)
+
+**Merged pull requests:**
+
+- chore: add missing shared CI workflows [\#35](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/35) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.1.4a4](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.4a4) (2025-12-19)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a3...0.1.4a4)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/V...0.1.4a4)
+
+## [V](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/V) (2025-12-19)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4a3...V)
 
 **Merged pull requests:**
 
@@ -11,10 +23,6 @@
 ## [0.1.4a3](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.4a3) (2025-12-18)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.4...0.1.4a3)
-
-**Fixed bugs:**
-
-- clear\_previous.lower\(\) == "true"\) AttributeError: 'bool' object has no attribute 'lower' [\#25](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/issues/25)
 
 **Merged pull requests:**
 
