@@ -39,6 +39,7 @@ def _stub_hardware_modules():
 
 _stub_hardware_modules()
 
+from ovos_spec_tools import SpecMessage  # noqa: E402
 from ovos_PHAL_plugin_mk1 import MycroftMark1  # noqa: E402
 from ovos_ui_enclosure_protocol import EnclosureProtocolListener  # noqa: E402
 
@@ -107,7 +108,7 @@ class TestMk1UsesComposition(unittest.TestCase):
         plugin = _bare_plugin()
         bus = FakeBus()
         plugin.enclosure = _wire(plugin, bus)
-        bus.emit_event("recognizer_loop:record_begin")  # on_record_begin -> on_listen
+        bus.emit_event(SpecMessage.LISTENER_RECORD_STARTED)  # on_record_begin -> on_listen
         plugin.writer.write.assert_called_with("mouth.listen")
         self.assertTrue(plugin.listening)
 
@@ -120,7 +121,7 @@ class TestMk1MouthGating(unittest.TestCase):
 
         # gating off: on_audio_output_start must not drive a talk animation
         plugin.enclosure.deactivate_mouth_events()
-        bus.emit_event("recognizer_loop:audio_output_start")
+        bus.emit_event(SpecMessage.AUDIO_OUTPUT_STARTED)
         self.assertTrue(plugin.speaking)
         talk_calls = [c for c in plugin.writer.write.call_args_list
                       if c.args and c.args[0] == "mouth.talk"]
@@ -128,7 +129,7 @@ class TestMk1MouthGating(unittest.TestCase):
 
         # gating on: now it drives the talk animation
         plugin.enclosure.activate_mouth_events()
-        bus.emit_event("recognizer_loop:audio_output_start")
+        bus.emit_event(SpecMessage.AUDIO_OUTPUT_STARTED)
         plugin.writer.write.assert_called_with("mouth.talk")
 
 

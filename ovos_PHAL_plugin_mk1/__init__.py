@@ -8,6 +8,7 @@ from ovos_bus_client.message import Message
 from ovos_mark1.faceplate.icons import MusicIcon, WarningIcon, SnowIcon, StormIcon, SunnyIcon, \
     CloudyIcon, PartlyCloudyIcon, WindIcon, RainIcon, LightRainIcon
 from ovos_plugin_manager.phal import PHALPlugin
+from ovos_spec_tools import SpecMessage
 from ovos_ui_enclosure_protocol import EnclosureProtocolListener
 from ovos_utils import create_daemon
 from ovos_utils.log import LOG
@@ -206,7 +207,7 @@ class MycroftMark1(PHALPlugin):
         if self.speaking or self.listening:
             self.bus.emit(Message("mycroft.stop"))
         else:
-            self.bus.emit(Message("mycroft.mic.listen"))
+            self.bus.emit(Message(SpecMessage.MIC_LISTEN))
 
     def on_music(self, message: Optional[Message] = None):
         MusicIcon(bus=self.bus).display()
@@ -255,7 +256,7 @@ class MycroftMark1(PHALPlugin):
 
     def on_awake(self, message: Optional[Message] = None):
         ''' on wakeup animation
-        triggered by "mycroft.awoken"
+        triggered by "ovos.listener.awoken"
         '''
         self.writer.write("eyes.reset")
         sleep(1)
@@ -266,7 +267,7 @@ class MycroftMark1(PHALPlugin):
 
     def on_sleep(self, message: Optional[Message] = None):
         ''' on naptime animation
-        triggered by "recognizer_loop:sleep"
+        triggered by "ovos.listener.sleep"
         '''
         # Dim and look downward to 'go to sleep'
         # TODO: Get current brightness from somewhere
@@ -440,7 +441,7 @@ class MycroftMark1(PHALPlugin):
     # Display (faceplate) messages
     def on_display_reset(self, message: Optional[Message] = None):
         """Restore the mouth display to normal (blank)
-        triggered by "enclosure.mouth.reset" / "recognizer_loop:record_end"
+        triggered by "enclosure.mouth.reset" / "ovos.listener.record.ended"
         """
         self.writer.write("mouth.reset")
 
@@ -458,7 +459,7 @@ class MycroftMark1(PHALPlugin):
 
     def on_listen(self, message: Optional[Message] = None):
         """Show a 'thinking' image or animation
-        triggered by "enclosure.mouth.listen" / "recognizer_loop:record_begin"
+        triggered by "enclosure.mouth.listen" / "ovos.listener.record.started"
         """
         self.writer.write("mouth.listen")
 
