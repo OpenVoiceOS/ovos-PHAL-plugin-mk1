@@ -8,6 +8,7 @@ from ovos_bus_client.message import Message
 from ovos_mark1.faceplate.icons import MusicIcon, WarningIcon, SnowIcon, StormIcon, SunnyIcon, \
     CloudyIcon, PartlyCloudyIcon, WindIcon, RainIcon, LightRainIcon
 from ovos_plugin_manager.phal import PHALPlugin
+from ovos_ui_enclosure_protocol import EnclosureProtocolListener
 from ovos_utils import create_daemon
 from ovos_utils.log import LOG
 from ovos_utils.network_utils import is_connected
@@ -40,7 +41,7 @@ class MycroftMark1Validator:
         return False
 
 
-class MycroftMark1(PHALPlugin):
+class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
     """
        Serves as a communication interface between Arduino and Mycroft Core.
 
@@ -66,6 +67,12 @@ class MycroftMark1(PHALPlugin):
         self.__init_serial()
         self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
         self.writer = EnclosureWriter(self.serial, self.bus)
+
+        # ovos-plugin-manager no longer wires the enclosure.* protocol into
+        # PHALPlugin; the Mark-1 is a hardware enclosure listener, so it mixes
+        # in EnclosureProtocolListener and wires the subscriptions itself.
+        self.register_enclosure_namespace()
+        self._activate_mouth_events()
 
         self._num_pixels = 12 * 2
         self._current_rgb = [(255, 255, 255) for i in range(self._num_pixels)]
@@ -182,6 +189,11 @@ class MycroftMark1(PHALPlugin):
     def handle_register_factory_reset_handler(self, message: Message):
         self.bus.emit(message.reply("system.factory.reset.register",
                                     {"skill_id": "ovos-phal-plugin-mk1"}))
+
+    def shutdown(self):
+        self.stopped.set()
+        self.shutdown_enclosure_namespace()
+        super().shutdown()
 
     # Audio Events
     def on_record_begin(self, message: Optional[Message] = None):

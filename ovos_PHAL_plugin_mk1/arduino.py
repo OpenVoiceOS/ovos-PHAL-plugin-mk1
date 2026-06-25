@@ -17,7 +17,6 @@ from threading import Thread
 
 from ovos_bus_client import Message
 from ovos_utils.log import LOG
-from ovos_utils.signal import check_for_signal
 
 
 class EnclosureReader(Thread):

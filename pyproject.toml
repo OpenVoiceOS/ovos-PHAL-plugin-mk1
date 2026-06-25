@@ -11,7 +11,7 @@ license = {text = "Apache-2.0"}
 authors = [
     {name = "JarbasAi", email = "jarbasai@mailfence.com"}
 ]
-requires-python = ">=3.5"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -20,7 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3"
 ]
 dependencies = [
-    "ovos-plugin-manager>=2.1.0,<3.0.0",
+    "ovos-plugin-manager>=3.0.0a1,<4.0.0",
+    "ovos-ui-enclosure-protocol>=0.0.1a1",
     "ovos-mark1-utils>=0.0.1",
     "ovos-utils>=0.0.38,<1.0.0",
     "ovos-i2c-detection>=0.0.5",
