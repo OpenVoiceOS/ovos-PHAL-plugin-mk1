@@ -1,9 +1,9 @@
 """Unit tests for the Mark-1 PHAL plugin's enclosure-protocol wiring.
 
-ovos-plugin-manager dropped the baked-in enclosure.* abstraction, so
-MycroftMark1 now mixes in EnclosureProtocolListener from
-ovos-ui-enclosure-protocol. These tests verify the mix-in resolves correctly
-and that the hardware handlers drive the faceplate writer.
+ovos-plugin-manager dropped the baked-in enclosure abstraction, so MycroftMark1
+now **instantiates** an EnclosureProtocolListener (composition) and routes the
+enclosure.* commands + record/speak/wake/sleep lifecycle to its own handlers
+via callbacks.
 
 The Mark-1 hardware modules (pyserial, ovos_mark1, ovos_i2c_detection) are not
 available in CI, so they are stubbed at import time. The plugin is built with
@@ -43,64 +43,93 @@ from ovos_PHAL_plugin_mk1 import MycroftMark1  # noqa: E402
 from ovos_ui_enclosure_protocol import EnclosureProtocolListener  # noqa: E402
 
 
-def _make_plugin() -> MycroftMark1:
-    """Build a MycroftMark1 without opening a real serial port."""
+def _bare_plugin() -> MycroftMark1:
+    """A MycroftMark1 with just enough state for the enclosure handlers."""
     plugin = MycroftMark1.__new__(MycroftMark1)
     plugin.bus = MagicMock()
     plugin.writer = MagicMock()
     plugin._current_rgb = [(0, 0, 0)] * 24
     plugin._num_pixels = 24
+    plugin.speaking = False
+    plugin.listening = False
     return plugin
 
 
-class TestMk1ListenerMixin(unittest.TestCase):
-    def test_mixes_in_enclosure_protocol_listener(self):
-        self.assertIn(EnclosureProtocolListener, MycroftMark1.__mro__)
+def _wire(plugin, bus):
+    """Wire a listener with the plugin's handlers as __init__ does."""
+    return EnclosureProtocolListener(
+        bus=bus,
+        on_no_internet=plugin.on_no_internet,
+        on_reset=plugin.on_reset,
+        on_system_blink=plugin.on_system_blink,
+        on_eyes_on=plugin.on_eyes_on,
+        on_eyes_color=plugin.on_eyes_color,
+        on_talk=plugin.on_talk,
+        on_text=plugin.on_text,
+        on_record_begin=plugin.on_record_begin,
+        on_audio_output_start=plugin.on_audio_output_start,
+        on_awoken=plugin.on_awake,
+    )
 
-    def test_protocol_helpers_come_from_the_listener(self):
-        for method in ("register_enclosure_namespace",
-                       "shutdown_enclosure_namespace",
-                       "_activate_mouth_events",
-                       "_deactivate_mouth_events",
-                       "mouth_events_active"):
-            owner = next(c.__name__ for c in MycroftMark1.__mro__
-                         if method in c.__dict__)
-            self.assertEqual(owner, "EnclosureProtocolListener", method)
+
+class FakeBus:
+    def __init__(self):
+        self.handlers = {}
+
+    def on(self, msg_type, cb):
+        self.handlers.setdefault(msg_type, []).append(cb)
+
+    def remove(self, msg_type, cb):
+        self.handlers.get(msg_type, []).remove(cb)
+
+    def emit_event(self, msg_type, message=None):
+        for cb in list(self.handlers.get(msg_type, [])):
+            cb(message)
 
 
-class TestMk1EnclosureWiring(unittest.TestCase):
-    def setUp(self):
-        self.plugin = _make_plugin()
-        self.plugin.register_enclosure_namespace()
-        self.wired = {call.args[0] for call in self.plugin.bus.on.call_args_list}
+class TestMk1UsesComposition(unittest.TestCase):
+    def test_does_not_subclass_the_listener(self):
+        """The plugin composes the listener; it must not inherit it."""
+        self.assertNotIn(EnclosureProtocolListener, MycroftMark1.__mro__)
 
-    def test_wires_enclosure_namespace(self):
-        self.assertTrue({"enclosure.eyes.color",
-                         "enclosure.mouth.text",
-                         "enclosure.system.blink"} <= self.wired)
-
-    def test_no_core_lifecycle_wired_here(self):
-        # register_core_events lives in PHALPlugin, not this call
-        self.assertFalse(any(t.startswith("recognizer_loop:") for t in self.wired))
-
-    def test_eyes_handler_drives_faceplate(self):
-        self.plugin.on_eyes_on()
-        self.plugin.writer.write.assert_called_with("eyes.on")
-
-    def test_color_handler_encodes_rgb(self):
+    def test_listener_routes_enclosure_command_to_writer(self):
         from ovos_bus_client.message import Message
-        self.plugin.on_eyes_color(Message("enclosure.eyes.color",
-                                          {"r": 0, "g": 1, "b": 2}))
-        self.plugin.writer.write.assert_called_with("eyes.color=" + str((0 * 65536) + (1 * 256) + 2))
+        plugin = _bare_plugin()
+        bus = FakeBus()
+        plugin.enclosure = _wire(plugin, bus)
+        bus.emit_event("enclosure.eyes.on")
+        plugin.writer.write.assert_called_with("eyes.on")
+        bus.emit_event("enclosure.eyes.color",
+                       Message("enclosure.eyes.color", {"r": 0, "g": 1, "b": 2}))
+        plugin.writer.write.assert_called_with("eyes.color=" + str((1 * 256) + 2))
+
+    def test_listener_routes_core_lifecycle_to_writer(self):
+        plugin = _bare_plugin()
+        bus = FakeBus()
+        plugin.enclosure = _wire(plugin, bus)
+        bus.emit_event("recognizer_loop:record_begin")  # on_record_begin -> on_listen
+        plugin.writer.write.assert_called_with("mouth.listen")
+        self.assertTrue(plugin.listening)
 
 
 class TestMk1MouthGating(unittest.TestCase):
-    def test_mouth_events_toggle(self):
-        plugin = _make_plugin()
-        plugin._activate_mouth_events()
-        self.assertTrue(plugin.mouth_events_active)
-        plugin._deactivate_mouth_events()
-        self.assertFalse(plugin.mouth_events_active)
+    def test_audio_output_start_respects_gating(self):
+        plugin = _bare_plugin()
+        bus = FakeBus()
+        plugin.enclosure = _wire(plugin, bus)
+
+        # gating off: on_audio_output_start must not drive a talk animation
+        plugin.enclosure.deactivate_mouth_events()
+        bus.emit_event("recognizer_loop:audio_output_start")
+        self.assertTrue(plugin.speaking)
+        talk_calls = [c for c in plugin.writer.write.call_args_list
+                      if c.args and c.args[0] == "mouth.talk"]
+        self.assertEqual(talk_calls, [])
+
+        # gating on: now it drives the talk animation
+        plugin.enclosure.activate_mouth_events()
+        bus.emit_event("recognizer_loop:audio_output_start")
+        plugin.writer.write.assert_called_with("mouth.talk")
 
 
 if __name__ == "__main__":

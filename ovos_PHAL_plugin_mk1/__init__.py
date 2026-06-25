@@ -41,7 +41,7 @@ class MycroftMark1Validator:
         return False
 
 
-class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
+class MycroftMark1(PHALPlugin):
     """
        Serves as a communication interface between Arduino and Mycroft Core.
 
@@ -68,17 +68,55 @@ class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
         self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
         self.writer = EnclosureWriter(self.serial, self.bus)
 
-        # ovos-plugin-manager no longer wires the enclosure.* protocol into
-        # PHALPlugin; the Mark-1 is a hardware enclosure listener, so it mixes
-        # in EnclosureProtocolListener and wires the subscriptions itself.
-        self.register_enclosure_namespace()
-        self._activate_mouth_events()
-
         self._num_pixels = 12 * 2
         self._current_rgb = [(255, 255, 255) for i in range(self._num_pixels)]
         self.showing_visemes = False
         self.speaking = False
         self.listening = False
+
+        # ovos-plugin-manager no longer wires the enclosure protocol into
+        # PHALPlugin; the Mark-1 is a hardware enclosure listener. Instantiate
+        # the protocol listener (composition) and route every enclosure.* command
+        # and the record/speak/wake/sleep lifecycle to this plugin's handlers.
+        self.enclosure = EnclosureProtocolListener(
+            bus=self.bus,
+            on_no_internet=self.on_no_internet,
+            on_reset=self.on_reset,
+            on_system_reset=self.on_system_reset,
+            on_system_mute=self.on_system_mute,
+            on_system_unmute=self.on_system_unmute,
+            on_system_blink=self.on_system_blink,
+            on_eyes_on=self.on_eyes_on,
+            on_eyes_off=self.on_eyes_off,
+            on_eyes_fill=self.on_eyes_fill,
+            on_eyes_blink=self.on_eyes_blink,
+            on_eyes_narrow=self.on_eyes_narrow,
+            on_eyes_look=self.on_eyes_look,
+            on_eyes_color=self.on_eyes_color,
+            on_eyes_brightness=self.on_eyes_brightness,
+            on_eyes_reset=self.on_eyes_reset,
+            on_eyes_timed_spin=self.on_eyes_timed_spin,
+            on_eyes_volume=self.on_eyes_volume,
+            on_eyes_spin=self.on_eyes_spin,
+            on_eyes_set_pixel=self.on_eyes_set_pixel,
+            on_talk=self.on_talk,
+            on_think=self.on_think,
+            on_listen=self.on_listen,
+            on_smile=self.on_smile,
+            on_viseme=self.on_viseme,
+            on_viseme_list=self.on_viseme_list,
+            on_display_reset=self.on_display_reset,
+            on_text=self.on_text,
+            on_display=self.on_display,
+            on_weather_display=self.on_weather_display,
+            on_record_begin=self.on_record_begin,
+            on_record_end=self.on_record_end,
+            on_sleep=self.on_sleep,
+            on_audio_output_start=self.on_audio_output_start,
+            on_audio_output_end=self.on_audio_output_end,
+            on_awoken=self.on_awake,
+        )
+        self.enclosure.activate_mouth_events()
 
         LOG.debug("clearing eyes and mouth")
         self.__reset()
@@ -192,12 +230,12 @@ class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
 
     def shutdown(self):
         self.stopped.set()
-        self.shutdown_enclosure_namespace()
+        self.enclosure.shutdown()
         super().shutdown()
 
     # Audio Events
     def on_record_begin(self, message: Optional[Message] = None):
-        # NOTE: ignore self._mouth_events, listening should ALWAYS be obvious
+        # NOTE: ignore mouth_events_active, listening should ALWAYS be obvious
         self.listening = True
         self.on_listen(message)
 
@@ -207,12 +245,12 @@ class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
 
     def on_audio_output_start(self, message: Optional[Message] = None):
         self.speaking = True
-        if self._mouth_events:
+        if self.enclosure.mouth_events_active:
             self.on_talk(message)
 
     def on_audio_output_end(self, message: Optional[Message] = None):
         self.speaking = False
-        if self._mouth_events:
+        if self.enclosure.mouth_events_active:
             self.on_display_reset(message)
 
     def on_awake(self, message: Optional[Message] = None):
@@ -606,11 +644,11 @@ class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
 
     # date/time
     def on_display_date(self, message: Message):
-        self._deactivate_mouth_events()
+        self.enclosure.deactivate_mouth_events()
         self.on_text(message)
         sleep(10)
         self.on_display_reset()
-        self._activate_mouth_events()
+        self.enclosure.activate_mouth_events()
 
     def on_display_time(self, message: Message):
         code_dict = {
@@ -627,7 +665,7 @@ class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
             '9': 'EIMBEBMHAA',
         }
 
-        self._deactivate_mouth_events()
+        self.enclosure.deactivate_mouth_events()
         display_time = message.data.get("text")
         # clear screen (draw two blank sections, numbers cover rest)
         if len(display_time) == 4:
@@ -660,4 +698,4 @@ class MycroftMark1(PHALPlugin, EnclosureProtocolListener):
         self._do_display("CIAAAA", x_offset=29, refresh=False)
         sleep(5)
         self.on_display_reset()
-        self._activate_mouth_events()
+        self.enclosure.activate_mouth_events()
