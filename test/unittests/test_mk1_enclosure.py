@@ -39,6 +39,7 @@ def _stub_hardware_modules():
 
 _stub_hardware_modules()
 
+from ovos_spec_tools import SpecMessage  # noqa: E402
 from ovos_PHAL_plugin_mk1 import MycroftMark1  # noqa: E402
 from ovos_ui_enclosure_protocol import EnclosureProtocolListener  # noqa: E402
 
@@ -101,6 +102,16 @@ class TestMk1MouthGating(unittest.TestCase):
         self.assertTrue(plugin.mouth_events_active)
         plugin._deactivate_mouth_events()
         self.assertFalse(plugin.mouth_events_active)
+
+
+class TestMk1SpecBusNamespace(unittest.TestCase):
+    def test_button_press_emits_spec_mic_listen(self):
+        plugin = _make_plugin()
+        plugin.speaking = False
+        plugin.listening = False
+        plugin.handle_button_press()
+        emitted = {call.args[0].msg_type for call in plugin.bus.emit.call_args_list}
+        self.assertIn(SpecMessage.MIC_LISTEN, emitted)
 
 
 if __name__ == "__main__":
