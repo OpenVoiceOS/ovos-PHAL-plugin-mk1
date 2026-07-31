@@ -1,29 +1,42 @@
-# ovos-PHAL-plugin - Mark1
+# ovos-PHAL-plugin-mk1
 
-handles integration with the Mycroft Mark1 hardware
+This is a PHAL (Platform Hardware Abstraction Layer) plugin for OpenVoiceOS. It controls the Mark 1 hardware: the eye and mouth faceplate, and the pins on the back of the device.
 
-the firmware for mark1 arduino that controls the eyes and faceplate can be found [here](https://github.com/OpenVoiceOS/mycroft-mark1-firmware)
+The firmware for the Mark 1 Arduino, which drives the eyes and faceplate, is in [OpenVoiceOS/mycroft-mark1-firmware](https://github.com/OpenVoiceOS/mycroft-mark1-firmware).
 
-utits to interact with the faceplate pixel by pixel can be found in [ovos-mark1-utils](https://github.com/OpenVoiceOS/ovos-mark1-utils) 
+[OpenVoiceOS/ovos-mark1-utils](https://github.com/OpenVoiceOS/ovos-mark1-utils) has utilities to set the faceplate pixel by pixel.
 
-# Serial Port Protocols
+## Install
 
-See the file [protocols.txt](./protocols.txt) for a description of commands that can be sent to the faceplate.
+```bash
+pip install ovos-PHAL-plugin-mk1
+```
 
-Commands can be sent from the command line on a Raspberry Pi, such as this:
+## Usage
+
+OpenVoiceOS loads this plugin through the `opm.phal` entry point. Once installed, PHAL detects and starts it automatically on Mark 1 hardware.
+
+### Serial port protocol
+
+See [protocols.txt](./protocols.txt) for the full list of commands you can send to the faceplate.
+
+You can send commands from the command line on a Raspberry Pi:
+
 ```
 $ echo "eyes.blink" > /dev/ttyAMA0
 $ echo "eyes.color=16711680" > /dev/ttyAMA0
 $ echo "mouth.text=I am angry!" > /dev/ttyAMA0
 ```
-Which will blink the eyes, turn them red, then display the phrase on the faceplate.
 
+These commands blink the eyes, turn them red, then show the phrase on the faceplate.
 
-# Graphics
-The `mouth.icon=` command takes a custom format for it's black and white images.  You can use the [HTML editor](http://htmlpreview.github.io/?https://raw.githubusercontent.com/MycroftAI/enclosure-mark1/master/editor.html) to create the image strings that can be sent. 
+### Graphics
 
-# IO pins
-When looking at the device from the back, pins are laid out as:
+The `mouth.icon=` command takes a custom format for black-and-white images. Use the [HTML editor](http://htmlpreview.github.io/?https://raw.githubusercontent.com/MycroftAI/enclosure-mark1/master/editor.html) to create the image strings you send.
+
+### IO pins
+
+Looking at the device from the back, the pins are laid out as:
 
 ```
              -----------------------------------------------------------------------------------------------
@@ -33,8 +46,6 @@ RCA Port    | 2 | 4 | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 | 26 | 28 | 
 
  HDMI                         Ethernet                        USB     USB
 ```
-
-Where:
 
 | Pin| Description          |
 |:--:|:---------------------|
@@ -79,5 +90,13 @@ Where:
 | 39 | GND                  |
 | 40 | GND                  |
 
-**WARNING: This is not the same as the standard Raspberry Pi GPIO headers!**
+**WARNING: This is not the same as the standard Raspberry Pi GPIO headers.**
 
+## Related projects
+
+- [OpenVoiceOS/mycroft-mark1-firmware](https://github.com/OpenVoiceOS/mycroft-mark1-firmware) — the Arduino firmware for the Mark 1 eyes and faceplate.
+- [OpenVoiceOS/ovos-mark1-utils](https://github.com/OpenVoiceOS/ovos-mark1-utils) — utilities to set the faceplate pixel by pixel.
+
+## License
+
+Apache-2.0, see [LICENSE](./LICENSE).
