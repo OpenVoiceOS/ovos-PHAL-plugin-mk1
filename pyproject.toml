@@ -33,6 +33,9 @@ Homepage = "https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1"
 [project.entry-points."opm.phal"]
 "ovos-phal-mk1" = "ovos_PHAL_plugin_mk1:MycroftMark1"
 
+[project.entry-points."opm.phal.admin"]
+"ovos-phal-mk1" = "ovos_PHAL_plugin_mk1:MycroftMark1AdminPlugin"
+
 [tool.setuptools.dynamic]
 version = {attr = "ovos_PHAL_plugin_mk1.version.__version__"}
 

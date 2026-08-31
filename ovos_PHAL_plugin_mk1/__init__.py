@@ -1,3 +1,4 @@
+import os
 import time
 from threading import Event
 from time import sleep
@@ -7,7 +8,8 @@ import serial
 from ovos_bus_client.message import Message
 from ovos_mark1.faceplate.icons import MusicIcon, WarningIcon, SnowIcon, StormIcon, SunnyIcon, \
     CloudyIcon, PartlyCloudyIcon, WindIcon, RainIcon, LightRainIcon
-from ovos_plugin_manager.phal import PHALPlugin
+from ovos_plugin_manager.phal import AdminPlugin, PHALPlugin
+from ovos_plugin_manager.templates.phal import AdminValidator
 from ovos_utils import create_daemon
 from ovos_utils.log import LOG
 from ovos_utils.network_utils import is_connected
@@ -15,6 +17,8 @@ from ovos_i2c_detection import is_mark_1
 from ovos_config import Configuration
 
 from ovos_PHAL_plugin_mk1.arduino import EnclosureReader, EnclosureWriter
+from ovos_PHAL_plugin_mk1.firmware import SUPPORTED_FIRMWARE_VERSION, \
+    FirmwareUpdateError, build_and_flash
 
 
 # The Mark 1 hardware consists of a Raspberry Pi main CPU which is connected
@@ -63,7 +67,7 @@ class MycroftMark1(PHALPlugin):
             "rate": 9600,
             "timeout": 5.0
         }
-        self.__init_serial()
+        self._init_serial()
         self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
         self.writer = EnclosureWriter(self.serial, self.bus)
 
@@ -96,8 +100,14 @@ class MycroftMark1(PHALPlugin):
         self.bus.on("ovos.mk1.display_date", self.on_display_date)
         self.bus.on("ovos.mk1.display_time", self.on_display_time)
 
+        self.bus.on("enclosure.firmware.version.get", self.handle_firmware_version_get)
+
         self.bus.emit(Message("system.factory.reset.register",
                               {"skill_id": "ovos-phal-plugin-mk1"}))
+
+        # ask the board to report its firmware version, so we know it
+        # without waiting for a reboot
+        self.writer.write("version")
 
     def _init_animation(self):
         # change eye color
@@ -141,7 +151,7 @@ class MycroftMark1(PHALPlugin):
                 services[ser] = True
         return all([services[ser] for ser in services])
 
-    def __init_serial(self):
+    def _init_serial(self):
         LOG.info("Connecting to mark1 faceplate")
         try:
             self.port = self.config.get("port", "/dev/ttyAMA0")
@@ -175,6 +185,11 @@ class MycroftMark1(PHALPlugin):
         """
         self.bus.emit(message.reply("enclosure.eyes.rgb",
                                     {"pixels": self._current_rgb}))
+
+    def handle_firmware_version_get(self, message: Message):
+        self.bus.emit(message.reply("enclosure.firmware.version",
+                                    {"version": self.reader.firmware_version,
+                                     "supported": SUPPORTED_FIRMWARE_VERSION}))
 
     def handle_factory_reset(self, message: Optional[Message] = None):
         self.writer.write("eyes.spin")
@@ -652,3 +667,65 @@ class MycroftMark1(PHALPlugin):
         sleep(5)
         self.on_display_reset()
         self._activate_mouth_events()
+
+
+class MycroftMark1AdminValidator(AdminValidator, MycroftMark1Validator):
+    @staticmethod
+    def validate(config=None):
+        LOG.info("ovos-PHAL-plugin-mk1 running as root")
+        return True
+
+
+class MycroftMark1AdminPlugin(AdminPlugin, MycroftMark1):
+    """Root-mode variant, only loaded when explicitly enabled in
+    PHAL.admin config. Adds the faceplate firmware update handler, which
+    needs root to drive the GPIO reset line and to hold the serial port
+    while avrdude flashes the board."""
+    validator = MycroftMark1AdminValidator
+
+    def __init__(self, bus=None, config=None):
+        super().__init__(bus=bus, config=config)
+        self.bus.on("enclosure.firmware.update", self.handle_firmware_update)
+
+    def _report_progress(self, step: str, log: str):
+        self.bus.emit(Message("enclosure.firmware.update.progress",
+                              {"step": step, "log": log}))
+
+    def handle_firmware_update(self, message: Optional[Message] = None):
+        message = message or Message("enclosure.firmware.update")
+        if os.geteuid() != 0:
+            self.bus.emit(message.reply("enclosure.firmware.update.failed",
+                                        {"error": "firmware update requires root"}))
+            return
+
+        tag = message.data.get("tag", f"v{SUPPORTED_FIRMWARE_VERSION}")
+
+        self.reader.stop()
+        self.writer.stop()
+        self.serial.close()
+        error = None
+        try:
+            build_and_flash(tag, progress=self._report_progress)
+        except FirmwareUpdateError as e:
+            LOG.exception("firmware update failed")
+            error = str(e)
+        finally:
+            # the faceplate must never be left mute after a failed build
+            # or flash, so serial always gets reopened here
+            self._init_serial()
+            self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
+            self.writer = EnclosureWriter(self.serial, self.bus)
+            self.writer.write("version")
+
+        if error:
+            self.bus.emit(message.reply("enclosure.firmware.update.failed",
+                                        {"error": error}))
+            return
+
+        # give the board a moment to reply with its new version
+        deadline = time.time() + self.timeout
+        while self.reader.firmware_version is None and time.time() < deadline:
+            sleep(0.2)
+
+        self.bus.emit(message.reply("enclosure.firmware.update.complete",
+                                    {"version": self.reader.firmware_version}))
