@@ -91,6 +91,8 @@ class MycroftMark1(PHALPlugin):
         self.bus.on("mycroft.audio.service.play", self.on_music)
         self.bus.on("mycroft.audio.service.stop", self.on_display_reset)
 
+        self.bus.on("enclosure.eyes.rgb.get", self.handle_get_color)
+
         self.bus.on("ovos.mk1.display_date", self.on_display_date)
         self.bus.on("ovos.mk1.display_time", self.on_display_time)
 
@@ -377,7 +379,8 @@ class MycroftMark1(PHALPlugin):
 
     def on_eyes_set_pixel(self, message: Message):
         """
-        triggered by "enclosure.eyes.set_pixel"
+        triggered by "enclosure.eyes.setpixel" -- no underscore, as bound
+        in ovos_plugin_manager.templates.phal
         """
         idx = int(message.data.get("idx", 0))
         r = int(message.data.get("r", 255))
