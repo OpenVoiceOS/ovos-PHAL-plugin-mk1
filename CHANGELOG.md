@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.7a1) (2026-09-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.6a1...0.1.7a1)
+
+**Merged pull requests:**
+
+- fix: answer the eye-colour readback [\#45](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/45) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.1.6a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.6a1) (2026-09-01)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.5a2...0.1.6a1)
