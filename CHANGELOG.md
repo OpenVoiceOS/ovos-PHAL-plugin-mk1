@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.6a1) (2026-09-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.5a2...0.1.6a1)
+
+**Merged pull requests:**
+
+- fix: drop the dead ovos\_utils.signal import that breaks the plugin [\#44](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/44) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.1.5a2](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.5a2) (2026-07-31)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.5a1...0.1.5a2)
