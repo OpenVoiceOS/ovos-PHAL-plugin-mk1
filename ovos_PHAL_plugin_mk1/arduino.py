@@ -11,12 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 import time
 from queue import Queue
 from threading import Thread
 
 from ovos_bus_client import Message
 from ovos_utils.log import LOG
+
+# matches the reply to the "version" serial command, e.g.
+# "Mycroft Mark 1 v1.4.2" or the boot banner
+# "Mycroft Mark 1 v1.4.2 - Connected"
+FIRMWARE_VERSION_RE = re.compile(r"Mycroft Mark 1 v(\d+\.\d+\.\d+)")
 
 
 class EnclosureReader(Thread):
@@ -41,6 +47,7 @@ class EnclosureReader(Thread):
         self.serial = serial
         self.bus = bus
         self.button_callback = button_callback
+        self.firmware_version = None
         self.start()
 
     def read(self):
@@ -60,6 +67,12 @@ class EnclosureReader(Thread):
 
     def process(self, data):
         LOG.info(f"faceplate event: {data}")
+
+        version_match = FIRMWARE_VERSION_RE.search(data)
+        if version_match:
+            self.firmware_version = version_match.group(1)
+            self.bus.emit(Message("enclosure.firmware.version",
+                                  {"version": self.firmware_version}))
 
         if "Command: system.version" in data:
             # This happens in response to the "system.version" message
