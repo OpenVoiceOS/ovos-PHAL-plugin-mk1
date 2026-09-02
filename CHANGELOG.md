@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.2.0a1) (2026-09-02)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.7a1...0.2.0a1)
+
+**Merged pull requests:**
+
+- feat: report and update faceplate firmware version [\#43](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/43) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.1.7a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.1.7a1) (2026-09-01)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.6a1...0.1.7a1)
