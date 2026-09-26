@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0a2](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.2.0a2) (2026-09-26)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.2.0a1...0.2.0a2)
+
+**Merged pull requests:**
+
+- ci: the build test runs the suite [\#50](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/pull/50) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [0.2.0a1](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/tree/0.2.0a1) (2026-09-02)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-PHAL-plugin-mk1/compare/0.1.7a1...0.2.0a1)
