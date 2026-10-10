@@ -78,7 +78,8 @@ class MycroftMark1(PHALPlugin):
         self.stopped = Event()
         self.config = {**SERIAL_DEFAULTS, **(config or configured_plugin_settings())}
         self._init_serial()
-        self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
+        self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press,
+                                      reconnect_callback=self._reopen_serial)
         self.writer = EnclosureWriter(self.serial, self.bus)
 
         self._num_pixels = 12 * 2
@@ -174,6 +175,20 @@ class MycroftMark1(PHALPlugin):
         except Exception as e:
             LOG.exception(f"Impossible to connect to serial: {self.port}")
             raise
+
+    def _reopen_serial(self):
+        """Replace a dead port for both threads and ask the board to report in again.
+
+        Called by the reader once it has backed off after a failed read.
+        """
+        try:
+            self.serial.close()
+        except Exception as e:
+            LOG.debug(f"Closing the dead serial port failed: {e}")
+        self._init_serial()
+        self.writer.serial = self.serial
+        self.writer.write(VERSION_COMMAND)
+        return self.serial
 
     def __reset(self, message: Optional[Message] = None):
         self.writer.write("eyes.reset")
@@ -723,7 +738,8 @@ class MycroftMark1AdminPlugin(AdminPlugin, MycroftMark1):
             # the faceplate must never be left mute after a failed build
             # or flash, so serial always gets reopened here
             self._init_serial()
-            self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
+            self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press,
+                                          reconnect_callback=self._reopen_serial)
             self.writer = EnclosureWriter(self.serial, self.bus)
             self.writer.write(VERSION_COMMAND)
 

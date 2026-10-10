@@ -14,7 +14,7 @@
 import re
 import time
 from queue import Queue
-from threading import Thread
+from threading import Event, Thread
 
 from ovos_bus_client import Message
 from ovos_utils.log import LOG
@@ -27,6 +27,10 @@ VERSION_COMMAND = "system.version"
 # matches the reply to VERSION_COMMAND, e.g. "Mycroft Mark 1 v1.4.2",
 # or the boot banner "Mycroft Mark 1 v1.4.2 - Connected"
 FIRMWARE_VERSION_RE = re.compile(r"Mycroft Mark 1 v(\d+\.\d+\.\d+)")
+
+# seconds to wait after a failed read before trying again, doubling each time
+MIN_RETRY_DELAY = 0.5
+MAX_RETRY_DELAY = 5.0
 
 
 class EnclosureReader(Thread):
@@ -42,15 +46,24 @@ class EnclosureReader(Thread):
         # . Notify all Mycroft Core processes (e.g. skills) to be stopped
 
     Note: A command is identified by a line break
+
+    When a read fails (unplugged UART, dropped socket) the reader backs off
+    and asks ``reconnect_callback`` for a reopened port instead of spinning.
     """
 
-    def __init__(self, serial, bus, button_callback=None):
+    def __init__(self, serial, bus, button_callback=None, reconnect_callback=None,
+                 min_retry_delay=MIN_RETRY_DELAY, max_retry_delay=MAX_RETRY_DELAY):
         super(EnclosureReader, self).__init__(target=self.read)
         self.alive = True
         self.daemon = True
         self.serial = serial
         self.bus = bus
         self.button_callback = button_callback
+        self.reconnect_callback = reconnect_callback
+        self.min_retry_delay = min_retry_delay
+        self.max_retry_delay = max_retry_delay
+        self.retry_delay = min_retry_delay
+        self._stopping = Event()
         self.firmware_version = None
         self.start()
 
@@ -58,16 +71,44 @@ class EnclosureReader(Thread):
         while self.alive:
             try:
                 data = self.serial.readline()[:-2]
-                if data:
-                    try:
-                        data_str = data.decode()
-                    except UnicodeError as e:
-                        data_str = data.decode('utf-8', errors='replace')
-                        LOG.warning('Invalid characters in response from '
-                                    ' enclosure: {}'.format(repr(e)))
-                    self.process(data_str)
             except Exception as e:
                 LOG.error("Reading error: {0}".format(e))
+                self._recover()
+                continue
+            self.retry_delay = self.min_retry_delay
+            if data:
+                self._handle(data)
+
+    def _handle(self, data: bytes):
+        try:
+            self.process(self._decode(data))
+        except Exception as e:
+            LOG.exception(f"Failed to handle faceplate event {data!r}: {e}")
+
+    @staticmethod
+    def _decode(data: bytes) -> str:
+        try:
+            return data.decode()
+        except UnicodeError as e:
+            LOG.warning(f"Invalid characters in response from enclosure: {e!r}")
+            return data.decode("utf-8", errors="replace")
+
+    def _recover(self):
+        """Wait out the current retry delay, then swap in a reopened port.
+
+        A port that cannot be reopened yet just lengthens the next wait, up
+        to ``max_retry_delay``; ``stop()`` cuts the wait short.
+        """
+        delay = self.retry_delay
+        self.retry_delay = min(delay * 2, self.max_retry_delay)
+        LOG.warning(f"Serial read failed, retrying in {delay:.1f}s")
+        self._stopping.wait(delay)
+        if not self.alive or self.reconnect_callback is None:
+            return
+        try:
+            self.serial = self.reconnect_callback()
+        except Exception as e:
+            LOG.error(f"Reopening serial failed: {e}")
 
     def process(self, data):
         LOG.info(f"faceplate event: {data}")
@@ -129,6 +170,7 @@ class EnclosureReader(Thread):
 
     def stop(self):
         self.alive = False
+        self._stopping.set()
 
 
 class EnclosureWriter(Thread):
