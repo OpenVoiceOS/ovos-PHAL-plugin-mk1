@@ -16,7 +16,8 @@ from ovos_utils.network_utils import is_connected
 from ovos_i2c_detection import is_mark_1
 from ovos_config import Configuration
 
-from ovos_PHAL_plugin_mk1.arduino import EnclosureReader, EnclosureWriter
+from ovos_PHAL_plugin_mk1.arduino import EnclosureReader, EnclosureWriter, \
+    VERSION_COMMAND
 from ovos_PHAL_plugin_mk1.firmware import SUPPORTED_FIRMWARE_VERSION, \
     FirmwareUpdateError, build_and_flash
 
@@ -116,7 +117,7 @@ class MycroftMark1(PHALPlugin):
 
         # ask the board to report its firmware version, so we know it
         # without waiting for a reboot
-        self.writer.write("version")
+        self.writer.write(VERSION_COMMAND)
 
     def _init_animation(self):
         # change eye color
@@ -724,7 +725,7 @@ class MycroftMark1AdminPlugin(AdminPlugin, MycroftMark1):
             self._init_serial()
             self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
             self.writer = EnclosureWriter(self.serial, self.bus)
-            self.writer.write("version")
+            self.writer.write(VERSION_COMMAND)
 
         if error:
             self.bus.emit(message.reply("enclosure.firmware.update.failed",

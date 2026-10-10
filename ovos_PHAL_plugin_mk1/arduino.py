@@ -19,9 +19,13 @@ from threading import Thread
 from ovos_bus_client import Message
 from ovos_utils.log import LOG
 
-# matches the reply to the "version" serial command, e.g.
-# "Mycroft Mark 1 v1.4.2" or the boot banner
-# "Mycroft Mark 1 v1.4.2 - Connected"
+# the firmware dispatches every command on its "<namespace>." prefix, so the
+# version request must carry the "system." namespace; a bare "version" is
+# echoed back and never answered
+VERSION_COMMAND = "system.version"
+
+# matches the reply to VERSION_COMMAND, e.g. "Mycroft Mark 1 v1.4.2",
+# or the boot banner "Mycroft Mark 1 v1.4.2 - Connected"
 FIRMWARE_VERSION_RE = re.compile(r"Mycroft Mark 1 v(\d+\.\d+\.\d+)")
 
 
@@ -74,9 +78,8 @@ class EnclosureReader(Thread):
             self.bus.emit(Message("enclosure.firmware.version",
                                   {"version": self.firmware_version}))
 
-        if "Command: system.version" in data:
-            # This happens in response to the "system.version" message
-            # sent during the construction of Enclosure()
+        if f"Command: {VERSION_COMMAND}" in data:
+            # the echo of the version request sent at startup
             self.bus.emit(Message("enclosure.started"))
 
         if "mycroft.stop" in data:

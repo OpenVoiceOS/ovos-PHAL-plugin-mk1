@@ -9,14 +9,16 @@ from ovos_bus_client.message import Message
 def plugin_factory():
     """Return a builder for ``MycroftMark1`` with serial, reader and writer stubbed.
 
+    ``admin`` builds the root-mode variant instead.
     ``config`` is what PHAL passes to the constructor. ``phal_config`` stands in
     for the ``PHAL`` section of mycroft.conf, which the plugin falls back to
     when PHAL hands it an empty block. The stubbed ``serial_for_url`` is kept
     on ``plugin.serial_opener`` so tests can check what port was opened.
     """
-    def build(config=None, phal_config=None):
-        from ovos_PHAL_plugin_mk1 import MycroftMark1
+    def build(config=None, phal_config=None, admin=False):
+        from ovos_PHAL_plugin_mk1 import MycroftMark1, MycroftMark1AdminPlugin
 
+        plugin_class = MycroftMark1AdminPlugin if admin else MycroftMark1
         bus = MagicMock()
         bus.wait_for_response.return_value = Message("resp", {"status": True})
         with patch("ovos_PHAL_plugin_mk1.serial") as fake_serial, \
@@ -25,7 +27,7 @@ def plugin_factory():
              patch("ovos_PHAL_plugin_mk1.is_connected", return_value=True), \
              patch("ovos_PHAL_plugin_mk1.EnclosureReader"), \
              patch("ovos_PHAL_plugin_mk1.EnclosureWriter"):
-            plugin = MycroftMark1(bus=bus, config=config)
+            plugin = plugin_class(bus=bus, config=config)
         plugin.serial_opener = fake_serial.serial_for_url
         return plugin
 
