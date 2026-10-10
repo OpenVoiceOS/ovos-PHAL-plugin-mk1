@@ -30,6 +30,22 @@ from ovos_PHAL_plugin_mk1.firmware import SUPPORTED_FIRMWARE_VERSION, \
 # pressing or turning a rotary encoder.
 
 
+# icon code -> 8x8 glyph for enclosure.weather.display; the firmware draws the
+# glyph's own `encoded` string, which is what the classic skill sent. Encoding
+# the instance instead pads it to the full 32x8 plate and the command then
+# exceeds the 60 characters a single icon message may carry
+WEATHER_ICONS = {
+    0: SunnyIcon,
+    1: PartlyCloudyIcon,
+    2: CloudyIcon,
+    3: LightRainIcon,
+    4: RainIcon,
+    5: StormIcon,
+    6: SnowIcon,
+    7: WindIcon,
+}
+
+
 class MycroftMark1Validator:
     @staticmethod
     def validate(config=None):
@@ -576,39 +592,15 @@ class MycroftMark1(PHALPlugin):
                          7 = wind/mist
             temp (int): the temperature (either C or F, not indicated)
         """
-        # Convert img_code to icon
-        img_code = message.data.get("img_code", None)
-        icon = None
-        if img_code == 0:
-            # sunny
-            icon = SunnyIcon(bus=self.bus).encode()
-        elif img_code == 1:
-            # partly cloudy
-            icon = PartlyCloudyIcon(bus=self.bus).encode()
-        elif img_code == 2:
-            # cloudy
-            icon = CloudyIcon(bus=self.bus).encode()
-        elif img_code == 3:
-            # light rain
-            icon = LightRainIcon(bus=self.bus).encode()
-        elif img_code == 4:
-            # raining
-            icon = RainIcon(bus=self.bus).encode()
-        elif img_code == 5:
-            # storming
-            icon = StormIcon(bus=self.bus).encode()
-        elif img_code == 6:
-            # snowing
-            icon = SnowIcon(bus=self.bus).encode()
-        elif img_code == 7:
-            # wind/mist
-            icon = WindIcon(bus=self.bus).encode()
-
+        try:
+            img_code = int(message.data.get("img_code"))
+        except (TypeError, ValueError):
+            return
+        icon = WEATHER_ICONS.get(img_code)
         temp = message.data.get("temp", None)
-        if icon is not None and temp is not None:
-            icon = "x=2," + icon
-            msg = "weather.display=" + str(temp) + "," + str(icon)
-            self.writer.write(msg)
+        if icon is None or temp is None:
+            return
+        self.writer.write(f"weather.display={temp},x=2,{icon.encoded}")
 
     # date/time
     def on_display_date(self, message: Message):
