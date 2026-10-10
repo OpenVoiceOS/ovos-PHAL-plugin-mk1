@@ -16,7 +16,8 @@ from ovos_utils.network_utils import is_connected
 from ovos_i2c_detection import is_mark_1
 from ovos_config import Configuration
 
-from ovos_PHAL_plugin_mk1.arduino import EnclosureReader, EnclosureWriter
+from ovos_PHAL_plugin_mk1.arduino import EnclosureReader, EnclosureWriter, \
+    VERSION_COMMAND
 from ovos_PHAL_plugin_mk1.firmware import SUPPORTED_FIRMWARE_VERSION, \
     FirmwareUpdateError, build_and_flash
 
@@ -30,18 +31,31 @@ from ovos_PHAL_plugin_mk1.firmware import SUPPORTED_FIRMWARE_VERSION, \
 # pressing or turning a rotary encoder.
 
 
+# PHAL hands a plugin the block stored under its entry-point name; older
+# configs used the package name, so both are honoured
+PLUGIN_CONFIG_KEYS = ("ovos-phal-mk1", "ovos-PHAL-plugin-mk1")
+SERIAL_DEFAULTS = {"port": "/dev/ttyAMA0", "rate": 9600, "timeout": 5.0}
+
+
+def configured_plugin_settings() -> dict:
+    """The plugin's block from mycroft.conf, under whichever key it was written."""
+    phal_config = Configuration().get("PHAL") or {}
+    for key in PLUGIN_CONFIG_KEYS:
+        if phal_config.get(key):
+            return phal_config[key]
+    return {}
+
+
 class MycroftMark1Validator:
     @staticmethod
     def validate(config=None):
         """ this method is called before loading the plugin.
         If it returns False the plugin is not loaded.
         This allows a plugin to run platform checks"""
-        cfg = config or Configuration().get("PHAL", {}).get("ovos-PHAL-plugin-mk1", {})
-        if cfg and cfg.get("enabled") == True:
+        cfg = config or configured_plugin_settings()
+        if cfg.get("enabled") is True:
             return True
-        if is_mark_1():
-            return True
-        return False
+        return is_mark_1()
 
 
 class MycroftMark1(PHALPlugin):
@@ -62,13 +76,10 @@ class MycroftMark1(PHALPlugin):
     def __init__(self, bus=None, config=None):
         super().__init__(bus=bus, name="ovos-PHAL-plugin-mk1", config=config)
         self.stopped = Event()
-        self.config = config or {
-            "port": "/dev/ttyAMA0",
-            "rate": 9600,
-            "timeout": 5.0
-        }
+        self.config = {**SERIAL_DEFAULTS, **(config or configured_plugin_settings())}
         self._init_serial()
-        self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
+        self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press,
+                                      reconnect_callback=self._reopen_serial)
         self.writer = EnclosureWriter(self.serial, self.bus)
 
         self._num_pixels = 12 * 2
@@ -107,7 +118,7 @@ class MycroftMark1(PHALPlugin):
 
         # ask the board to report its firmware version, so we know it
         # without waiting for a reboot
-        self.writer.write("version")
+        self.writer.write(VERSION_COMMAND)
 
     def _init_animation(self):
         # change eye color
@@ -164,6 +175,20 @@ class MycroftMark1(PHALPlugin):
         except Exception as e:
             LOG.exception(f"Impossible to connect to serial: {self.port}")
             raise
+
+    def _reopen_serial(self):
+        """Replace a dead port for both threads and ask the board to report in again.
+
+        Called by the reader once it has backed off after a failed read.
+        """
+        try:
+            self.serial.close()
+        except Exception as e:
+            LOG.debug(f"Closing the dead serial port failed: {e}")
+        self._init_serial()
+        self.writer.serial = self.serial
+        self.writer.write(VERSION_COMMAND)
+        return self.serial
 
     def __reset(self, message: Optional[Message] = None):
         self.writer.write("eyes.reset")
@@ -713,9 +738,10 @@ class MycroftMark1AdminPlugin(AdminPlugin, MycroftMark1):
             # the faceplate must never be left mute after a failed build
             # or flash, so serial always gets reopened here
             self._init_serial()
-            self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
+            self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press,
+                                          reconnect_callback=self._reopen_serial)
             self.writer = EnclosureWriter(self.serial, self.bus)
-            self.writer.write("version")
+            self.writer.write(VERSION_COMMAND)
 
         if error:
             self.bus.emit(message.reply("enclosure.firmware.update.failed",
