@@ -16,6 +16,28 @@ pip install ovos-PHAL-plugin-mk1
 
 OpenVoiceOS loads this plugin through the `opm.phal` entry point. Once installed, PHAL detects and starts it automatically on Mark 1 hardware.
 
+### Configuration
+
+On Mark 1 hardware the plugin loads with no configuration at all. To enable it
+elsewhere, or to change the serial port, add a block under the plugin's
+entry-point name:
+
+```json
+"PHAL": {
+  "ovos-phal-mk1": {
+    "enabled": true,
+    "port": "/dev/ttyAMA0",
+    "rate": 9600,
+    "timeout": 5.0
+  }
+}
+```
+
+`port` accepts any pyserial URL, so `"socket://127.0.0.1:5555"` points the
+plugin at a virtual faceplate such as
+[ovos-virtual-mark1](https://github.com/OscillateLabsLLC/ovos-virtual-mark1).
+The older `ovos-PHAL-plugin-mk1` key is still read as a fallback.
+
 ### Serial port protocol
 
 See [protocols.txt](./protocols.txt) for the full list of commands you can send to the faceplate.

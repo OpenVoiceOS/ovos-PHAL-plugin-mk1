@@ -30,18 +30,31 @@ from ovos_PHAL_plugin_mk1.firmware import SUPPORTED_FIRMWARE_VERSION, \
 # pressing or turning a rotary encoder.
 
 
+# PHAL hands a plugin the block stored under its entry-point name; older
+# configs used the package name, so both are honoured
+PLUGIN_CONFIG_KEYS = ("ovos-phal-mk1", "ovos-PHAL-plugin-mk1")
+SERIAL_DEFAULTS = {"port": "/dev/ttyAMA0", "rate": 9600, "timeout": 5.0}
+
+
+def configured_plugin_settings() -> dict:
+    """The plugin's block from mycroft.conf, under whichever key it was written."""
+    phal_config = Configuration().get("PHAL") or {}
+    for key in PLUGIN_CONFIG_KEYS:
+        if phal_config.get(key):
+            return phal_config[key]
+    return {}
+
+
 class MycroftMark1Validator:
     @staticmethod
     def validate(config=None):
         """ this method is called before loading the plugin.
         If it returns False the plugin is not loaded.
         This allows a plugin to run platform checks"""
-        cfg = config or Configuration().get("PHAL", {}).get("ovos-PHAL-plugin-mk1", {})
-        if cfg and cfg.get("enabled") == True:
+        cfg = config or configured_plugin_settings()
+        if cfg.get("enabled") is True:
             return True
-        if is_mark_1():
-            return True
-        return False
+        return is_mark_1()
 
 
 class MycroftMark1(PHALPlugin):
@@ -62,11 +75,7 @@ class MycroftMark1(PHALPlugin):
     def __init__(self, bus=None, config=None):
         super().__init__(bus=bus, name="ovos-PHAL-plugin-mk1", config=config)
         self.stopped = Event()
-        self.config = config or {
-            "port": "/dev/ttyAMA0",
-            "rate": 9600,
-            "timeout": 5.0
-        }
+        self.config = {**SERIAL_DEFAULTS, **(config or configured_plugin_settings())}
         self._init_serial()
         self.reader = EnclosureReader(self.serial, self.bus, self.handle_button_press)
         self.writer = EnclosureWriter(self.serial, self.bus)
